@@ -1,6 +1,7 @@
 import re
 import tempfile
 import time
+import html
 
 import streamlit as st
 from pdfminer.high_level import extract_text
@@ -42,6 +43,61 @@ def latest_resume_updates(text, emails, phones):
         updates.append("Your resume looks complete. Focus on tailoring it to each role.")
 
     return updates[:5]
+
+
+def clamp(value, low, high):
+    return max(low, min(high, value))
+
+
+def extract_skill_insights(text):
+    text_lower = text.lower()
+    skill_targets = [
+        "python",
+        "sql",
+        "machine learning",
+        "communication",
+        "power bi",
+        "excel",
+        "leadership",
+        "project management",
+    ]
+    matching = [skill for skill in skill_targets if skill in text_lower]
+    missing = [skill for skill in skill_targets if skill not in text_lower]
+    return matching[:4], missing[:4]
+
+
+def calculate_resume_scores(text, emails, phones):
+    text_lower = text.lower()
+
+    # ATS score: core contact completeness + resume content depth.
+    ats = 35
+    if emails:
+        ats += 25
+    if phones:
+        ats += 20
+    ats += clamp(len(text) // 300, 0, 20)
+
+    keywords = [
+        "skills",
+        "experience",
+        "project",
+        "education",
+        "certification",
+        "linkedin",
+        "github",
+    ]
+    keyword_hits = sum(1 for word in keywords if word in text_lower)
+    compatibility = clamp(int((keyword_hits / len(keywords)) * 100), 20, 96)
+
+    sentences = [chunk.strip() for chunk in re.split(r"[.!?]+", text) if chunk.strip()]
+    if sentences:
+        avg_words = sum(len(sentence.split()) for sentence in sentences) / len(sentences)
+    else:
+        avg_words = 0
+    readability = clamp(int(92 - abs(avg_words - 16) * 2.8), 35, 94)
+
+    overall = round((ats + compatibility + readability) / 3)
+    return ats, compatibility, readability, overall
 
 
 st.set_page_config(page_title="AI Resume Analyzer", layout="wide")
@@ -91,6 +147,53 @@ st.markdown(
         border-radius: 20px;
         padding: 1rem;
         box-shadow: 0 18px 30px rgba(22, 26, 43, 0.08);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .dashboard-shell::before {
+        content: "";
+        position: absolute;
+        inset: 16px 16px auto auto;
+        width: 94%;
+        height: 92%;
+        border: 1px solid rgba(170, 182, 222, 0.35);
+        border-radius: 22px;
+        transform: translate(-20px, 20px);
+        z-index: 0;
+        pointer-events: none;
+    }
+
+    .browser-bar {
+        background: #f8f9ff;
+        border: 1px solid #d6dcf1;
+        border-radius: 14px;
+        padding: 0.35rem 0.6rem;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 0.75rem;
+        position: relative;
+        z-index: 1;
+    }
+
+    .browser-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        display: inline-block;
+        margin-right: 0.3rem;
+        background: #d2d8f0;
+    }
+
+    .talk-btn {
+        background: #0f1325;
+        color: #ffffff;
+        border-radius: 8px;
+        border: 1px solid #20294f;
+        padding: 0.24rem 0.55rem;
+        font-size: 0.72rem;
+        font-weight: 600;
     }
 
     .side-panel {
@@ -98,8 +201,10 @@ st.markdown(
         border-radius: 16px;
         color: #ffffff;
         padding: 1.15rem 1rem;
-        min-height: 690px;
+        min-height: 780px;
         box-shadow: 0 16px 28px rgba(45, 50, 132, 0.32);
+        position: relative;
+        z-index: 1;
     }
 
     .logo {
@@ -213,7 +318,7 @@ st.markdown(
         font-size: 1.95rem;
         font-weight: 800;
         letter-spacing: -0.3px;
-        color: #d97706;
+        color: #24315c;
     }
 
     .dashboard-card {
@@ -533,6 +638,177 @@ st.markdown(
         font-weight: 700;
     }
 
+    .analysis-card {
+        background: #ffffff;
+        border: 1px solid #dfe5f3;
+        border-radius: 14px;
+        padding: 0.95rem;
+        box-shadow: 0 10px 16px rgba(20, 28, 58, 0.06);
+        margin-bottom: 0.9rem;
+    }
+
+    .panel-subtle {
+        font-size: 0.75rem;
+        color: #7e87a3;
+        margin: 0.2rem 0 0.5rem 0;
+    }
+
+    .analysis-title {
+        margin: 0;
+        font-size: 1rem;
+        font-weight: 700;
+        color: #1f2a4a;
+    }
+
+    .candidate-box {
+        margin-top: 0.65rem;
+        padding: 0.7rem;
+        border-radius: 10px;
+        border: 1px solid #e4e9f6;
+        background: #f8fafe;
+    }
+
+    .candidate-name {
+        margin: 0;
+        font-size: 0.96rem;
+        font-weight: 700;
+    }
+
+    .candidate-meta {
+        margin: 0.2rem 0 0 0;
+        font-size: 0.8rem;
+        color: #6f7897;
+    }
+
+    .preview-snippet {
+        margin-top: 0.7rem;
+        border: 1px solid #e6ebf8;
+        border-radius: 10px;
+        background: #fbfcff;
+        padding: 0.7rem;
+        color: #5b6484;
+        font-size: 0.82rem;
+        line-height: 1.45;
+        min-height: 128px;
+    }
+
+    .score-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(80px, 1fr));
+        gap: 0.55rem;
+        margin-top: 0.65rem;
+    }
+
+    .score-chip {
+        border: 1px solid #e3e8f6;
+        border-radius: 11px;
+        background: #f9fbff;
+        padding: 0.6rem 0.45rem;
+        text-align: center;
+    }
+
+    .ring {
+        --pct: 0;
+        --ring-color: #4f77ff;
+        width: 58px;
+        height: 58px;
+        margin: 0 auto 0.4rem auto;
+        border-radius: 50%;
+        background: conic-gradient(var(--ring-color) calc(var(--pct) * 1%), #e3e9f8 0);
+        display: grid;
+        place-items: center;
+    }
+
+    .ring::before {
+        content: "";
+        width: 42px;
+        height: 42px;
+        border-radius: 50%;
+        background: #ffffff;
+        border: 1px solid #e8edfb;
+    }
+
+    .ring-value {
+        margin-top: -2.1rem;
+        font-size: 0.72rem;
+        font-weight: 800;
+        color: #253562;
+    }
+
+    .ring-label {
+        margin: 0.18rem 0 0 0;
+        font-size: 0.73rem;
+        color: #6a7394;
+        font-weight: 600;
+    }
+
+    .skill-wrap {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.55rem;
+        margin-top: 0.75rem;
+    }
+
+    .skill-box {
+        border: 1px solid #e4e9f7;
+        border-radius: 10px;
+        background: #fbfcff;
+        padding: 0.58rem;
+    }
+
+    .skill-box h6 {
+        margin: 0 0 0.3rem 0;
+        font-size: 0.76rem;
+        color: #34426f;
+    }
+
+    .skill-pill {
+        display: inline-block;
+        margin: 0.18rem 0.2rem 0.1rem 0;
+        padding: 0.17rem 0.5rem;
+        border-radius: 999px;
+        font-size: 0.72rem;
+        font-weight: 600;
+        border: 1px solid #dbe4fb;
+        color: #3b4a7a;
+        background: #eef3ff;
+    }
+
+    .overall-note {
+        margin-top: 0.7rem;
+        padding: 0.58rem;
+        border-radius: 10px;
+        border: 1px solid #e3e8f5;
+        background: #f7f9fe;
+        font-size: 0.81rem;
+        color: #5b6484;
+    }
+
+    .action-row {
+        margin-top: 0.55rem;
+        display: flex;
+        gap: 0.45rem;
+    }
+
+    .action-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 8px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        padding: 0.3rem 0.58rem;
+        border: 1px solid #d4dbef;
+        background: #f8faff;
+        color: #3a466f;
+    }
+
+    .action-btn.primary {
+        background: #2e3f79;
+        border-color: #2e3f79;
+        color: #ffffff;
+    }
+
     @media (max-width: 960px) {
         .side-panel {
             min-height: auto;
@@ -541,6 +817,14 @@ st.markdown(
 
         .headline {
             font-size: 1.45rem;
+        }
+
+        .score-grid {
+            grid-template-columns: repeat(2, minmax(80px, 1fr));
+        }
+
+        .skill-wrap {
+            grid-template-columns: 1fr;
         }
     }
     </style>
@@ -563,12 +847,12 @@ with side_col:
           </div>
           <ul class="nav-list">
                         <li><span class="nav-left"><span class="nav-icon">&#8962;</span>Dashboard</span><span>&#8250;</span></li>
-                        <li><span class="nav-left"><span class="nav-icon">&#8682;</span>Upload Resume</span><span>&#8250;</span></li>
-                        <li><span class="nav-left"><span class="nav-icon">&#9993;</span>Email Insights</span><span>&#8250;</span></li>
-                        <li><span class="nav-left"><span class="nav-icon">&#9742;</span>Phone Insights</span><span>&#8250;</span></li>
-                        <li><span class="nav-left"><span class="nav-icon">&#128196;</span>Preview Text</span><span>&#8250;</span></li>
+                        <li><span class="nav-left"><span class="nav-icon">&#128101;</span>Interview Process</span><span>&#8250;</span></li>
+                        <li><span class="nav-left"><span class="nav-icon">&#128221;</span>Resume Analysis</span><span>&#8250;</span></li>
                         <li><span class="nav-left"><span class="nav-icon">&#128202;</span>Reports</span><span>&#8250;</span></li>
+                        <li><span class="nav-left"><span class="nav-icon">&#128276;</span>Notifications</span><span>&#8250;</span></li>
                         <li><span class="nav-left"><span class="nav-icon">&#9881;</span>Settings</span><span>&#8250;</span></li>
+                        <li><span class="nav-left"><span class="nav-icon">&#10067;</span>Support</span><span>&#8250;</span></li>
           </ul>
         </div>
         """,
@@ -581,91 +865,49 @@ with main_col:
 
     st.markdown(
         """
+        <div class="browser-bar">
+          <div>
+            <span class="browser-dot"></span>
+            <span class="browser-dot"></span>
+            <span class="browser-dot"></span>
+          </div>
+          <button class="talk-btn">&#9679; Talk to Professionals</button>
+        </div>
         <div class="top-strip">
-                    <div class="top-strip-row">
-                        <div>
-                            <p class="hello">Hello, Welcome back</p>
-                            <h1 class="headline">Your Resume Dashboard</h1>
-                        </div>
-                        <div class="top-actions">
-                            <span class="top-badge">&#128276;</span>
-                            <span class="top-badge">&#128197;</span>
-                            <span class="top-badge">&#128269;</span>
-                        </div>
-                    </div>
+          <p class="hello">Hello, Welcome back</p>
+          <h1 class="headline">Resume Analysis Workspace</h1>
         </div>
         """,
         unsafe_allow_html=True,
     )
 
-    top_card_1, top_card_2, top_card_3 = st.columns([1.3, 1, 1.05], gap="small")
+    uploaded_file = st.file_uploader(
+        "Upload Resume",
+        type=["pdf"],
+        help="Only PDF files are supported",
+        label_visibility="collapsed",
+    )
 
-    with top_card_1:
-        st.markdown('<div class="dashboard-card upload-card">', unsafe_allow_html=True)
-        st.markdown(
-            """
-            <div class="upload-head">
-              <div class="upload-icon">&#8682;</div>
-              <div>
-                <h4 class="section-title">Upload Resume</h4>
-              </div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-        uploaded_file = st.file_uploader("Choose PDF", type=["pdf"], help="Only PDF files are supported", label_visibility="collapsed")
-        st.caption("Tip: Use text-based PDFs for the best extraction quality.")
+    if uploaded_file is not None:
+        token = f"{uploaded_file.name}_{uploaded_file.size}"
+        if st.session_state["uploaded_file_token"] != token:
+            progress = st.progress(0, text="Uploading resume...")
+            for pct in range(0, 101, 10):
+                time.sleep(0.03)
+                progress.progress(pct, text=f"Uploading resume... {pct}%")
+            st.session_state["uploaded_file_token"] = token
+        st.progress(100, text="Upload complete")
 
-        if uploaded_file is not None:
-            token = f"{uploaded_file.name}_{uploaded_file.size}"
-            if st.session_state["uploaded_file_token"] != token:
-                progress = st.progress(0, text="Uploading resume...")
-                for pct in range(0, 101, 10):
-                    time.sleep(0.03)
-                    progress.progress(pct, text=f"Uploading resume... {pct}%")
-                st.session_state["uploaded_file_token"] = token
-            st.progress(100, text="Upload complete")
-
-        st.markdown(
-            f"""
-            <details class="orange-update-box">
-              <summary>Latest updates required in your resume</summary>
-              <ul>{updates_html}</ul>
-            </details>
-            """,
-            unsafe_allow_html=True,
-        )
-        st.markdown("</div>", unsafe_allow_html=True)
-
-    with top_card_2:
-        st.markdown(
-            """
-            <div class="feature-tile">
-                            <div class="tile-head">
-                                <span class="tile-icon tile-icon-blue">&#128193;</span>
-                                <h5>Open Projects</h5>
-                            </div>
-              <p>3 tasks remaining</p>
-              <p style="margin-top:0.5rem; font-weight:700; color:#2b3b86;">Complete extraction queue</p>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-
-    with top_card_3:
-        st.markdown(
-            """
-            <div class="weather-tile">
-                            <div class="tile-head">
-                                <span class="tile-icon tile-icon-white">&#9737;</span>
-                                <h5>Today's focus</h5>
-                            </div>
-              <p>Upload and screen resumes quickly</p>
-              <p style="margin-top:0.5rem; font-size:1.25rem; color:#ffffff;">Contact Ready</p>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
+    analysis_ready = False
+    text = ""
+    emails = []
+    phones = []
+    ats_score, compatibility_score, readability_score, overall_score = (0, 0, 0, 0)
+    matching_skills = ["python", "sql"]
+    missing_skills = ["project management", "power bi"]
+    overall_note = "Upload your resume to generate personalized recommendations and scores."
+    preview_text = "Your extracted resume content will appear here once a PDF is uploaded and analyzed."
+    candidate_label = "Candidate Profile"
 
     if uploaded_file is None:
         st.info("Please upload a resume PDF to start analysis.")
@@ -689,6 +931,13 @@ with main_col:
                 st.session_state["resume_updates"] = updates
                 st.rerun()
 
+            ats_score, compatibility_score, readability_score, overall_score = calculate_resume_scores(text, emails, phones)
+            matching_skills, missing_skills = extract_skill_insights(text)
+            overall_note = updates[0] if updates else "Your resume looks strong. Tailor it per role for better conversion."
+            preview_text = (text[:540] + "...") if len(text) > 540 else text
+            candidate_label = uploaded_file.name
+            analysis_ready = True
+
             st.success("Resume uploaded and processed successfully.")
             st.markdown('<span class="status-ribbon">&#10003; Resume parsed and insights updated</span>', unsafe_allow_html=True)
 
@@ -696,37 +945,126 @@ with main_col:
             metric_col_1.metric("Emails Found", len(emails))
             metric_col_2.metric("Phone Numbers Found", len(phones))
             metric_col_3.metric("Text Preview", "Ready")
-
-            result_col_1, result_col_2 = st.columns(2, gap="small")
-
-            with result_col_1:
-                st.markdown(
-                    '<div class="dashboard-card"><div class="result-head"><span class="result-icon">&#9993;</span><h4 class="section-title">Email Addresses</h4></div>',
-                    unsafe_allow_html=True,
-                )
-                if emails:
-                    st.markdown("".join([f'<span class="chip">{email}</span>' for email in emails]), unsafe_allow_html=True)
-                else:
-                    st.markdown('<p class="empty-note">No email address found.</p>', unsafe_allow_html=True)
-                st.markdown("</div>", unsafe_allow_html=True)
-
-            with result_col_2:
-                st.markdown(
-                    '<div class="dashboard-card"><div class="result-head"><span class="result-icon">&#9742;</span><h4 class="section-title">Phone Numbers</h4></div>',
-                    unsafe_allow_html=True,
-                )
-                if phones:
-                    st.markdown("".join([f'<span class="chip">{phone}</span>' for phone in phones]), unsafe_allow_html=True)
-                else:
-                    st.markdown('<p class="empty-note">No phone number found.</p>', unsafe_allow_html=True)
-                st.markdown("</div>", unsafe_allow_html=True)
-
-            with st.expander("Preview extracted text"):
-                st.text(text[:2500] if text else "No text could be extracted from this PDF.")
-
-            st.markdown('<p class="footer-note">Styled as a dashboard while preserving your extraction workflow.</p>', unsafe_allow_html=True)
         except Exception as error:
             st.error(f"Could not process this file: {error}")
+
+    score_cards_html = f"""
+    <div class=\"score-grid\">
+      <div class=\"score-chip\">
+        <div class=\"ring\" style=\"--pct:{ats_score}; --ring-color:#5ea4d2;\"></div>
+        <div class=\"ring-value\">{ats_score}%</div>
+        <p class=\"ring-label\">ATS Score</p>
+      </div>
+      <div class=\"score-chip\">
+        <div class=\"ring\" style=\"--pct:{compatibility_score}; --ring-color:#d79615;\"></div>
+        <div class=\"ring-value\">{compatibility_score}%</div>
+        <p class=\"ring-label\">Compatibility</p>
+      </div>
+      <div class=\"score-chip\">
+        <div class=\"ring\" style=\"--pct:{readability_score}; --ring-color:#2e7e88;\"></div>
+        <div class=\"ring-value\">{readability_score}%</div>
+        <p class=\"ring-label\">Readability</p>
+      </div>
+      <div class=\"score-chip\">
+        <div class=\"ring\" style=\"--pct:{overall_score}; --ring-color:#3f63df;\"></div>
+        <div class=\"ring-value\">{overall_score}%</div>
+        <p class=\"ring-label\">Overall</p>
+      </div>
+    </div>
+    """
+
+    matching_html = "".join([f'<span class="skill-pill">{skill.title()}</span>' for skill in matching_skills])
+    missing_html = "".join([f'<span class="skill-pill">{skill.title()}</span>' for skill in missing_skills])
+
+    if not matching_html:
+        matching_html = '<span class="skill-pill">No strong skill matches yet</span>'
+    if not missing_html:
+        missing_html = '<span class="skill-pill">No major missing skills found</span>'
+
+    analysis_left, analysis_right = st.columns([1.05, 1], gap="small")
+
+    with analysis_left:
+        st.markdown('<div class="analysis-card">', unsafe_allow_html=True)
+        st.markdown('<h4 class="analysis-title">Resume Recommendation</h4>', unsafe_allow_html=True)
+        safe_candidate = html.escape(candidate_label)
+        safe_email = html.escape(emails[0] if emails else "No email extracted yet")
+        safe_preview = html.escape(preview_text if preview_text.strip() else "No readable text extracted from this file.")
+        st.markdown(
+            f"""
+            <div class="candidate-box">
+              <p class="candidate-name">{safe_candidate}</p>
+              <p class="candidate-meta">{safe_email}</p>
+            </div>
+            <div class="preview-snippet">{safe_preview}</div>
+            <div class="action-row">
+              <span class="action-btn">&#8682; Upload Resume</span>
+              <span class="action-btn primary">&#9889; Analyze Resume</span>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+        st.markdown(
+            f"""
+            <details class="orange-update-box">
+              <summary>Latest updates required in your resume</summary>
+              <ul>{updates_html}</ul>
+            </details>
+            """,
+            unsafe_allow_html=True,
+        )
+        st.markdown("</div>", unsafe_allow_html=True)
+
+    with analysis_right:
+        st.markdown('<div class="analysis-card">', unsafe_allow_html=True)
+        st.markdown('<h4 class="analysis-title">Resume Score</h4>', unsafe_allow_html=True)
+        st.markdown(score_cards_html, unsafe_allow_html=True)
+        st.markdown(
+            f"""
+            <div class="skill-wrap">
+              <div class="skill-box">
+                <h6>Matching Skills</h6>
+                {matching_html}
+              </div>
+              <div class="skill-box">
+                <h6>Missing Skills</h6>
+                {missing_html}
+              </div>
+            </div>
+                        <div class="overall-note">{html.escape(overall_note)}</div>
+            """,
+            unsafe_allow_html=True,
+        )
+        st.markdown("</div>", unsafe_allow_html=True)
+
+    if analysis_ready:
+        result_col_1, result_col_2 = st.columns(2, gap="small")
+
+        with result_col_1:
+            st.markdown(
+                '<div class="dashboard-card"><div class="result-head"><span class="result-icon">&#9993;</span><h4 class="section-title">Email Addresses</h4></div>',
+                unsafe_allow_html=True,
+            )
+            if emails:
+                st.markdown("".join([f'<span class="chip">{email}</span>' for email in emails]), unsafe_allow_html=True)
+            else:
+                st.markdown('<p class="empty-note">No email address found.</p>', unsafe_allow_html=True)
+            st.markdown("</div>", unsafe_allow_html=True)
+
+        with result_col_2:
+            st.markdown(
+                '<div class="dashboard-card"><div class="result-head"><span class="result-icon">&#9742;</span><h4 class="section-title">Phone Numbers</h4></div>',
+                unsafe_allow_html=True,
+            )
+            if phones:
+                st.markdown("".join([f'<span class="chip">{phone}</span>' for phone in phones]), unsafe_allow_html=True)
+            else:
+                st.markdown('<p class="empty-note">No phone number found.</p>', unsafe_allow_html=True)
+            st.markdown("</div>", unsafe_allow_html=True)
+
+        with st.expander("Preview extracted text"):
+            st.text(text[:2500] if text else "No text could be extracted from this PDF.")
+
+    st.markdown('<p class="footer-note">Styled as a dashboard while preserving your extraction workflow.</p>', unsafe_allow_html=True)
 
 st.markdown('</div>', unsafe_allow_html=True)
     
