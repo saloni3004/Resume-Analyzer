@@ -1,5 +1,6 @@
 import re
 import tempfile
+import time
 
 import streamlit as st
 from pdfminer.high_level import extract_text
@@ -53,6 +54,9 @@ default_resume_updates = [
 
 if "resume_updates" not in st.session_state:
     st.session_state["resume_updates"] = default_resume_updates
+
+if "uploaded_file_token" not in st.session_state:
+    st.session_state["uploaded_file_token"] = ""
 
 st.markdown(
     """
@@ -241,9 +245,58 @@ st.markdown(
 
     [data-testid="stFileUploader"] {
         background: #fbfcff;
-        border: 1px dashed #c7d4f8;
+        border: 2px dashed #b9c9f4;
         border-radius: 12px;
-        padding: 0.32rem;
+        padding: 0.4rem;
+        transition: all 0.24s ease;
+    }
+
+    .upload-card {
+        transition: transform 0.22s ease, box-shadow 0.22s ease;
+    }
+
+    .upload-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 14px 26px rgba(30, 36, 63, 0.11);
+    }
+
+    .upload-card:hover [data-testid="stFileUploader"] {
+        border-color: #6d8ef0;
+        background: #f4f8ff;
+    }
+
+    .upload-head {
+        display: flex;
+        align-items: center;
+        gap: 0.55rem;
+        margin-bottom: 0.35rem;
+    }
+
+    .upload-icon {
+        width: 34px;
+        height: 34px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1rem;
+        font-weight: 800;
+        color: #ffffff;
+        background: linear-gradient(140deg, #4f73ef 0%, #2f56e5 100%);
+        box-shadow: 0 8px 14px rgba(47, 86, 229, 0.35);
+        animation: icon-float 1.9s ease-in-out infinite;
+    }
+
+    .upload-hint {
+        margin: 0;
+        font-size: 0.8rem;
+        color: #6d7590;
+    }
+
+    @keyframes icon-float {
+        0% { transform: translateY(0px); }
+        50% { transform: translateY(-3px); }
+        100% { transform: translateY(0px); }
     }
 
     [data-testid="stMetric"] {
@@ -395,11 +448,32 @@ with main_col:
     top_card_1, top_card_2, top_card_3 = st.columns([1.3, 1, 1.05], gap="small")
 
     with top_card_1:
-        st.markdown('<div class="dashboard-card">', unsafe_allow_html=True)
-        st.markdown('<h4 class="section-title">Upload Resume</h4>', unsafe_allow_html=True)
-        st.markdown('<p class="section-note">Drop your latest PDF and extract contacts instantly.</p>', unsafe_allow_html=True)
+        st.markdown('<div class="dashboard-card upload-card">', unsafe_allow_html=True)
+        st.markdown(
+            """
+            <div class="upload-head">
+              <div class="upload-icon">&#8682;</div>
+              <div>
+                <h4 class="section-title">Upload Resume</h4>
+                <p class="upload-hint">Drop your latest PDF and extract contacts instantly.</p>
+              </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
         uploaded_file = st.file_uploader("Choose PDF", type=["pdf"], help="Only PDF files are supported", label_visibility="collapsed")
         st.caption("Tip: Use text-based PDFs for the best extraction quality.")
+
+        if uploaded_file is not None:
+            token = f"{uploaded_file.name}_{uploaded_file.size}"
+            if st.session_state["uploaded_file_token"] != token:
+                progress = st.progress(0, text="Uploading resume...")
+                for pct in range(0, 101, 10):
+                    time.sleep(0.03)
+                    progress.progress(pct, text=f"Uploading resume... {pct}%")
+                st.session_state["uploaded_file_token"] = token
+            st.progress(100, text="Upload complete")
+
         st.markdown(
             f"""
             <details class="orange-update-box">
