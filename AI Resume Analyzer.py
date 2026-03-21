@@ -168,8 +168,8 @@ st.markdown(
     }
 
     .top-strip {
-        background: #ffffff;
-        border: 1px solid var(--border);
+        background: linear-gradient(135deg, #eef4ff 0%, #e3edff 100%);
+        border: 1px solid #cfdcff;
         border-radius: 14px;
         padding: 1rem 1.1rem;
         margin-bottom: 0.9rem;
@@ -213,7 +213,7 @@ st.markdown(
         font-size: 1.95rem;
         font-weight: 800;
         letter-spacing: -0.3px;
-        color: var(--text);
+        color: #d97706;
     }
 
     .dashboard-card {
@@ -318,11 +318,46 @@ st.markdown(
     }
 
     [data-testid="stFileUploader"] {
-        background: #fbfcff;
-        border: 2px dashed #b9c9f4;
+        background: linear-gradient(160deg, #0c2d66 0%, #08224f 100%);
+        border: 2px dashed #4f75c6;
         border-radius: 12px;
-        padding: 0.4rem;
+        padding: 0.55rem;
+        min-height: 210px;
+        display: flex;
+        align-items: center;
         transition: all 0.24s ease;
+    }
+
+    [data-testid="stFileUploaderDropzone"] {
+        min-height: 175px;
+        border-radius: 12px;
+        background: linear-gradient(180deg, #123a7e 0%, #0e2f68 100%);
+        border: 1px dashed #86a7ea;
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+    }
+
+    [data-testid="stFileUploaderDropzone"] * {
+        color: #e9f1ff !important;
+    }
+
+    /* Give Browse files a contrasting accent color */
+    [data-testid="stFileUploaderDropzone"] button {
+        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%) !important;
+        color: #fff8ef !important;
+        border: 1px solid #f6b35a !important;
+        border-radius: 10px !important;
+        font-weight: 700 !important;
+        box-shadow: 0 8px 16px rgba(217, 119, 6, 0.35) !important;
+        transition: all 0.2s ease !important;
+    }
+
+    [data-testid="stFileUploaderDropzone"] button:hover {
+        background: linear-gradient(135deg, #fbbf24 0%, #ea8f12 100%) !important;
+        transform: translateY(-1px);
+    }
+
+    [data-testid="stFileUploaderDropzoneInstructions"] {
+        padding-top: 0.45rem;
     }
 
     .upload-card {
@@ -335,8 +370,8 @@ st.markdown(
     }
 
     .upload-card:hover [data-testid="stFileUploader"] {
-        border-color: #6d8ef0;
-        background: #f4f8ff;
+        border-color: #8db2ff;
+        background: linear-gradient(160deg, #143874 0%, #0c2b5e 100%);
     }
 
     .upload-head {
@@ -573,7 +608,6 @@ with main_col:
               <div class="upload-icon">&#8682;</div>
               <div>
                 <h4 class="section-title">Upload Resume</h4>
-                <p class="upload-hint">Drop your latest PDF and extract contacts instantly.</p>
               </div>
             </div>
             """,
