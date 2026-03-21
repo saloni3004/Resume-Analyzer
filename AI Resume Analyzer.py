@@ -145,6 +145,24 @@ st.markdown(
         color: #eaf0ff;
     }
 
+    .nav-left {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45rem;
+    }
+
+    .nav-icon {
+        width: 22px;
+        height: 22px;
+        border-radius: 7px;
+        background: rgba(255, 255, 255, 0.12);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.72rem;
+    }
+
     .main-panel {
         padding: 0.1rem 0.25rem;
     }
@@ -155,6 +173,33 @@ st.markdown(
         border-radius: 14px;
         padding: 1rem 1.1rem;
         margin-bottom: 0.9rem;
+    }
+
+    .top-strip-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.8rem;
+    }
+
+    .top-actions {
+        display: flex;
+        align-items: center;
+        gap: 0.45rem;
+    }
+
+    .top-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 34px;
+        height: 34px;
+        border-radius: 10px;
+        border: 1px solid #dbe4fa;
+        background: #f6f9ff;
+        color: #3d58be;
+        font-size: 0.92rem;
+        font-weight: 700;
     }
 
     .hello {
@@ -204,6 +249,35 @@ st.markdown(
     .feature-tile h5 {
         margin: 0 0 0.22rem 0;
         font-size: 0.95rem;
+    }
+
+    .tile-head {
+        display: flex;
+        align-items: center;
+        gap: 0.45rem;
+        margin-bottom: 0.32rem;
+    }
+
+    .tile-icon {
+        width: 28px;
+        height: 28px;
+        border-radius: 8px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.85rem;
+        font-weight: 700;
+    }
+
+    .tile-icon-blue {
+        background: #dfe9ff;
+        color: #3b57c6;
+    }
+
+    .tile-icon-white {
+        background: rgba(255, 255, 255, 0.2);
+        color: #ffffff;
+        border: 1px solid rgba(255, 255, 255, 0.28);
     }
 
     .feature-tile p {
@@ -389,6 +463,41 @@ st.markdown(
         line-height: 1.4;
     }
 
+    .result-head {
+        display: flex;
+        align-items: center;
+        gap: 0.45rem;
+        margin-bottom: 0.22rem;
+    }
+
+    .result-icon {
+        width: 26px;
+        height: 26px;
+        border-radius: 8px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        color: #2b3b86;
+        background: #e9f0ff;
+        border: 1px solid #d7e3ff;
+        font-size: 0.8rem;
+        font-weight: 700;
+    }
+
+    .status-ribbon {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        margin-top: 0.35rem;
+        padding: 0.28rem 0.55rem;
+        border-radius: 999px;
+        background: #ecfdf3;
+        border: 1px solid #bfeace;
+        color: #0f766e;
+        font-size: 0.75rem;
+        font-weight: 700;
+    }
+
     @media (max-width: 960px) {
         .side-panel {
             min-height: auto;
@@ -418,13 +527,13 @@ with side_col:
             <span>Analyzer workspace</span>
           </div>
           <ul class="nav-list">
-            <li><span>Dashboard</span><span>&#8250;</span></li>
-            <li><span>Upload Resume</span><span>&#8250;</span></li>
-            <li><span>Email Insights</span><span>&#8250;</span></li>
-            <li><span>Phone Insights</span><span>&#8250;</span></li>
-            <li><span>Preview Text</span><span>&#8250;</span></li>
-            <li><span>Reports</span><span>&#8250;</span></li>
-            <li><span>Settings</span><span>&#8250;</span></li>
+                        <li><span class="nav-left"><span class="nav-icon">&#8962;</span>Dashboard</span><span>&#8250;</span></li>
+                        <li><span class="nav-left"><span class="nav-icon">&#8682;</span>Upload Resume</span><span>&#8250;</span></li>
+                        <li><span class="nav-left"><span class="nav-icon">&#9993;</span>Email Insights</span><span>&#8250;</span></li>
+                        <li><span class="nav-left"><span class="nav-icon">&#9742;</span>Phone Insights</span><span>&#8250;</span></li>
+                        <li><span class="nav-left"><span class="nav-icon">&#128196;</span>Preview Text</span><span>&#8250;</span></li>
+                        <li><span class="nav-left"><span class="nav-icon">&#128202;</span>Reports</span><span>&#8250;</span></li>
+                        <li><span class="nav-left"><span class="nav-icon">&#9881;</span>Settings</span><span>&#8250;</span></li>
           </ul>
         </div>
         """,
@@ -438,8 +547,17 @@ with main_col:
     st.markdown(
         """
         <div class="top-strip">
-          <p class="hello">Hello, Welcome back</p>
-          <h1 class="headline">Your Resume Dashboard</h1>
+                    <div class="top-strip-row">
+                        <div>
+                            <p class="hello">Hello, Welcome back</p>
+                            <h1 class="headline">Your Resume Dashboard</h1>
+                        </div>
+                        <div class="top-actions">
+                            <span class="top-badge">&#128276;</span>
+                            <span class="top-badge">&#128197;</span>
+                            <span class="top-badge">&#128269;</span>
+                        </div>
+                    </div>
         </div>
         """,
         unsafe_allow_html=True,
@@ -489,7 +607,10 @@ with main_col:
         st.markdown(
             """
             <div class="feature-tile">
-              <h5>Open Projects</h5>
+                            <div class="tile-head">
+                                <span class="tile-icon tile-icon-blue">&#128193;</span>
+                                <h5>Open Projects</h5>
+                            </div>
               <p>3 tasks remaining</p>
               <p style="margin-top:0.5rem; font-weight:700; color:#2b3b86;">Complete extraction queue</p>
             </div>
@@ -501,7 +622,10 @@ with main_col:
         st.markdown(
             """
             <div class="weather-tile">
-              <h5>Today's focus</h5>
+                            <div class="tile-head">
+                                <span class="tile-icon tile-icon-white">&#9737;</span>
+                                <h5>Today's focus</h5>
+                            </div>
               <p>Upload and screen resumes quickly</p>
               <p style="margin-top:0.5rem; font-size:1.25rem; color:#ffffff;">Contact Ready</p>
             </div>
@@ -532,6 +656,7 @@ with main_col:
                 st.rerun()
 
             st.success("Resume uploaded and processed successfully.")
+            st.markdown('<span class="status-ribbon">&#10003; Resume parsed and insights updated</span>', unsafe_allow_html=True)
 
             metric_col_1, metric_col_2, metric_col_3 = st.columns(3)
             metric_col_1.metric("Emails Found", len(emails))
@@ -541,7 +666,10 @@ with main_col:
             result_col_1, result_col_2 = st.columns(2, gap="small")
 
             with result_col_1:
-                st.markdown('<div class="dashboard-card"><h4 class="section-title">Email Addresses</h4>', unsafe_allow_html=True)
+                st.markdown(
+                    '<div class="dashboard-card"><div class="result-head"><span class="result-icon">&#9993;</span><h4 class="section-title">Email Addresses</h4></div>',
+                    unsafe_allow_html=True,
+                )
                 if emails:
                     st.markdown("".join([f'<span class="chip">{email}</span>' for email in emails]), unsafe_allow_html=True)
                 else:
@@ -549,7 +677,10 @@ with main_col:
                 st.markdown("</div>", unsafe_allow_html=True)
 
             with result_col_2:
-                st.markdown('<div class="dashboard-card"><h4 class="section-title">Phone Numbers</h4>', unsafe_allow_html=True)
+                st.markdown(
+                    '<div class="dashboard-card"><div class="result-head"><span class="result-icon">&#9742;</span><h4 class="section-title">Phone Numbers</h4></div>',
+                    unsafe_allow_html=True,
+                )
                 if phones:
                     st.markdown("".join([f'<span class="chip">{phone}</span>' for phone in phones]), unsafe_allow_html=True)
                 else:
