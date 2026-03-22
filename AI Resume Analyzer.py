@@ -2,6 +2,7 @@ import re
 import tempfile
 import time
 import html
+from collections import Counter
 
 import streamlit as st
 from pdfminer.high_level import extract_text
@@ -18,7 +19,7 @@ def unique_keep_order(items):
     return ordered
 
 
-def latest_resume_updates(text, emails, phones):
+def latest_resume_updates(text, emails, phones, jd_text=""):
     text_lower = text.lower()
     updates = []
 
@@ -39,6 +40,14 @@ def latest_resume_updates(text, emails, phones):
     if "certification" not in text_lower and "certificate" not in text_lower:
         updates.append("Mention relevant certifications to strengthen credibility.")
 
+    jd_keywords = extract_jd_keywords(jd_text)
+    if jd_keywords:
+        missing_terms = [word for word in jd_keywords if word not in text_lower]
+        if missing_terms:
+            updates.append(
+                "Align your resume with JD terms: " + ", ".join(missing_terms[:4]) + "."
+            )
+
     if not updates:
         updates.append("Your resume looks complete. Focus on tailoring it to each role.")
 
@@ -49,8 +58,37 @@ def clamp(value, low, high):
     return max(low, min(high, value))
 
 
-def extract_skill_insights(text):
-    text_lower = text.lower()
+def extract_jd_keywords(jd_text):
+    if not jd_text.strip():
+        return []
+
+    words = re.findall(r"[a-zA-Z][a-zA-Z+.#-]{3,}", jd_text.lower())
+    stopwords = {
+        "with",
+        "from",
+        "that",
+        "have",
+        "will",
+        "this",
+        "your",
+        "their",
+        "ability",
+        "years",
+        "experience",
+        "skills",
+        "role",
+        "team",
+        "work",
+        "using",
+        "knowledge",
+    }
+    filtered = [word for word in words if word not in stopwords]
+    return [word for word, _ in Counter(filtered).most_common(8)]
+
+
+def extract_skill_insights(text, jd_text=""):
+    resume_text = text.lower()
+    jd_lower = jd_text.lower()
     skill_targets = [
         "python",
         "sql",
@@ -61,13 +99,19 @@ def extract_skill_insights(text):
         "leadership",
         "project management",
     ]
-    matching = [skill for skill in skill_targets if skill in text_lower]
-    missing = [skill for skill in skill_targets if skill not in text_lower]
+
+    if jd_lower.strip():
+        required = [skill for skill in skill_targets if skill in jd_lower]
+        skill_targets = required if required else skill_targets
+
+    matching = [skill for skill in skill_targets if skill in resume_text]
+    missing = [skill for skill in skill_targets if skill not in resume_text]
     return matching[:4], missing[:4]
 
 
-def calculate_resume_scores(text, emails, phones):
+def calculate_resume_scores(text, emails, phones, jd_text=""):
     text_lower = text.lower()
+    jd_lower = jd_text.lower()
 
     # ATS score: core contact completeness + resume content depth.
     ats = 35
@@ -77,17 +121,25 @@ def calculate_resume_scores(text, emails, phones):
         ats += 20
     ats += clamp(len(text) // 300, 0, 20)
 
-    keywords = [
-        "skills",
-        "experience",
-        "project",
-        "education",
-        "certification",
-        "linkedin",
-        "github",
-    ]
-    keyword_hits = sum(1 for word in keywords if word in text_lower)
-    compatibility = clamp(int((keyword_hits / len(keywords)) * 100), 20, 96)
+    if jd_lower.strip():
+        jd_keywords = extract_jd_keywords(jd_text)
+        if jd_keywords:
+            overlap = sum(1 for word in jd_keywords if word in text_lower)
+            compatibility = clamp(int((overlap / len(jd_keywords)) * 100), 12, 98)
+        else:
+            compatibility = 35
+    else:
+        keywords = [
+            "skills",
+            "experience",
+            "project",
+            "education",
+            "certification",
+            "linkedin",
+            "github",
+        ]
+        keyword_hits = sum(1 for word in keywords if word in text_lower)
+        compatibility = clamp(int((keyword_hits / len(keywords)) * 100), 20, 96)
 
     sentences = [chunk.strip() for chunk in re.split(r"[.!?]+", text) if chunk.strip()]
     if sentences:
@@ -98,6 +150,20 @@ def calculate_resume_scores(text, emails, phones):
 
     overall = round((ats + compatibility + readability) / 3)
     return ats, compatibility, readability, overall
+
+
+def extract_uploaded_document_text(uploaded_doc):
+    if uploaded_doc is None:
+        return ""
+
+    file_name = (uploaded_doc.name or "").lower()
+    if file_name.endswith(".txt"):
+        return uploaded_doc.getvalue().decode("utf-8", errors="ignore")
+
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as temp_file:
+        temp_file.write(uploaded_doc.getbuffer())
+        temp_path = temp_file.name
+    return extract_text(temp_path) or ""
 
 
 st.set_page_config(page_title="AI Resume Analyzer", layout="wide")
@@ -888,6 +954,22 @@ with main_col:
         label_visibility="collapsed",
     )
 
+    jd_text_input = st.text_area(
+        "Paste Job Description (optional)",
+        placeholder="Paste JD text here for role-specific matching...",
+        height=120,
+    )
+
+    jd_file = None
+    show_jd_uploader = st.checkbox("Upload JD file instead")
+    if show_jd_uploader:
+        jd_file = st.file_uploader(
+            "Upload Job Description",
+            type=["pdf", "txt"],
+            help="Upload a JD in PDF or TXT format.",
+            key="job_description_uploader",
+        )
+
     if uploaded_file is not None:
         token = f"{uploaded_file.name}_{uploaded_file.size}"
         if st.session_state["uploaded_file_token"] != token:
@@ -908,6 +990,13 @@ with main_col:
     overall_note = "Upload your resume to generate personalized recommendations and scores."
     preview_text = "Your extracted resume content will appear here once a PDF is uploaded and analyzed."
     candidate_label = "Candidate Profile"
+    jd_text = ""
+    jd_status = "No JD uploaded"
+
+    if jd_text_input.strip():
+        jd_status = "JD text added"
+    elif jd_file is not None:
+        jd_status = f"Selected: {jd_file.name}"
 
     if uploaded_file is None:
         st.info("Please upload a resume PDF to start analysis.")
@@ -926,13 +1015,19 @@ with main_col:
             phones = unique_keep_order(
                 re.findall(r"(?:\+?\d{1,3}[\s-]?)?(?:\(?\d{3,5}\)?[\s-]?)?\d{5}[\s-]?\d{5}", text)
             )
-            updates = latest_resume_updates(text, emails, phones)
+
+            jd_text = jd_text_input.strip()
+            if not jd_text and jd_file is not None:
+                jd_text = extract_uploaded_document_text(jd_file)
+            jd_status = "JD uploaded" if jd_text.strip() else "No JD uploaded"
+
+            updates = latest_resume_updates(text, emails, phones, jd_text)
             if updates != st.session_state["resume_updates"]:
                 st.session_state["resume_updates"] = updates
                 st.rerun()
 
-            ats_score, compatibility_score, readability_score, overall_score = calculate_resume_scores(text, emails, phones)
-            matching_skills, missing_skills = extract_skill_insights(text)
+            ats_score, compatibility_score, readability_score, overall_score = calculate_resume_scores(text, emails, phones, jd_text)
+            matching_skills, missing_skills = extract_skill_insights(text, jd_text)
             overall_note = updates[0] if updates else "Your resume looks strong. Tailor it per role for better conversion."
             preview_text = (text[:540] + "...") if len(text) > 540 else text
             candidate_label = uploaded_file.name
@@ -944,7 +1039,7 @@ with main_col:
             metric_col_1, metric_col_2, metric_col_3 = st.columns(3)
             metric_col_1.metric("Emails Found", len(emails))
             metric_col_2.metric("Phone Numbers Found", len(phones))
-            metric_col_3.metric("Text Preview", "Ready")
+            metric_col_3.metric("JD Match", jd_status)
         except Exception as error:
             st.error(f"Could not process this file: {error}")
 
@@ -988,12 +1083,14 @@ with main_col:
         st.markdown('<h4 class="analysis-title">Resume Recommendation</h4>', unsafe_allow_html=True)
         safe_candidate = html.escape(candidate_label)
         safe_email = html.escape(emails[0] if emails else "No email extracted yet")
+        safe_jd_status = html.escape(jd_status)
         safe_preview = html.escape(preview_text if preview_text.strip() else "No readable text extracted from this file.")
         st.markdown(
             f"""
             <div class="candidate-box">
               <p class="candidate-name">{safe_candidate}</p>
               <p class="candidate-meta">{safe_email}</p>
+              <p class="candidate-meta">Job Description: {safe_jd_status}</p>
             </div>
             <div class="preview-snippet">{safe_preview}</div>
             <div class="action-row">
